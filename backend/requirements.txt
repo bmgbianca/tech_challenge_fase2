@@ -1,0 +1,9 @@
+pygame
+requests
+matplotlib
+numpy
+python-dotenv
+pytest
+flask
+flask-cors
+openai
