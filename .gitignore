@@ -3,7 +3,9 @@ backend/.env
 **/__pycache__/
 *.pyc
 .venv/
+.venv313/
 .pytest_cache/
+backend/.vscode
 backend/data/route_runs.json
 backend/data/comparative_reports.json
 backend/data/sp_municipalities.json

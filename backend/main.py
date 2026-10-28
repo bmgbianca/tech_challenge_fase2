@@ -1,10 +1,11 @@
 import itertools
+from pathlib import Path
 import pygame
 from pygame.locals import *
 import sys
 from typing import List
 
-from backend.config.constants import (
+from .config.constants import (
     BLACK,
     FPS,
     GRAY,
@@ -16,19 +17,23 @@ from backend.config.constants import (
     RED,
     WIDTH,
 )
-from backend.config.interfaces import CityEntity
-from backend.data.route_cities import sao_paulo_cities
-from backend.ga.calculation import (
+from .config.interfaces import CityEntity
+from .data import sao_paulo_cities
+from .ga import (
     calculate_critical_duration,
     calculate_routes,
     calculate_fitness,
+    order_crossover,
+    generate_initial_population,
+    segment_shuffle_mutation,
+    select_parents,
+    sort_population_by_fitness,
 )
-from backend.ga.crossover import order_crossover
-from backend.ga.initial_population import generate_initial_population
-from backend.ga.mutation import segment_shuffle_mutation
-from backend.ga.selection import select_parents, sort_population_by_fitness
-from backend.llm.route_instructions import prepare_route_data
-from backend.viz.draw_functions import draw_paths, draw_plot, draw_cities
+from .llm import prepare_route_data
+from .viz.draw_functions import draw_paths, draw_plot, draw_cities
+
+# Path to map image:
+ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 
 # Initialize pygame
 pygame.init()
@@ -36,7 +41,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption(
     "Buscando a melhor rota para o TSP da entrega de medicamentos"
 )
-map = pygame.image.load("assets/mapa.webp")
+map = pygame.image.load(str(ASSETS_DIR / "mapa.webp"))
 clock = pygame.time.Clock()
 
 # Pre-calculate distances and durations for all city pairs:
@@ -137,8 +142,8 @@ while running:
 
     population = new_population
 
-    stability_reached = len(best_fitness_values) > 100 and all(
-        best_fitness == best_fitness_values[-100]
+    stability_reached = len(best_fitness_values) > 500 and all(
+        best_fitness == best_fitness_values[-500]
         for best_fitness in best_fitness_values[len(best_fitness_values) - 100 :]
     )
 
