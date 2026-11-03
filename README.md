@@ -83,7 +83,24 @@ source .venv/bin/activate
 python backend/main.py
 ```
 
-Abre uma janela mostrando o mapa de São Paulo, as cidades (vermelho), a melhor solução (uma cor por veículo, rotas abertas) e a segunda melhor, além do gráfico de evolução do fitness, em tempo real. Pressione `Q` ou feche a janela para interromper antes da convergência. Usa sempre o conjunto fixo de 16 cidades, 3 veículos e parâmetros fixos definidos em `backend/constants/` — não depende do frontend nem do servidor Flask.
+Abre uma janela mostrando o mapa de São Paulo, as cidades (vermelho), a melhor solução (uma cor por veículo, rotas abertas) e a segunda melhor, além do gráfico de evolução do fitness, em tempo real. Ao terminar, imprime no console as rotas de cada veículo, a distância e o prazo das prioridades (não usa a LLM). Pressione `Q` ou feche a janela para interromper antes da convergência. Usa sempre o conjunto fixo de 16 cidades, 3 veículos e parâmetros fixos definidos em `backend/constants/` — não depende do frontend nem do servidor Flask.
+
+### Demonstração sem interface (script e notebook)
+
+Para ver o algoritmo rodando sem abrir janela, sem o frontend, sem OpenAI e sem gastar a cota do OpenRouteService: a matriz de distâncias das 16 cidades já está em `backend/data/demo_routes.json` (gerada uma vez a partir do OpenRouteService), então o script e o notebook funcionam offline. Todas as execuções usam semente fixa e são reproduzíveis.
+
+```bash
+source .venv/bin/activate
+
+# Script: imprime as rotas de cada veículo, distância, duração e prazo das prioridades
+python -m backend.demo
+python -m backend.demo --strategy cheapest_insertion --vehicles 2 --seed 7
+
+# Notebook (já traz as saídas e os gráficos executados)
+jupyter lab notebooks/demo.ipynb
+```
+
+O notebook (`notebooks/demo.ipynb`) mostra a melhor solução, a curva de convergência, as rotas no mapa (uma cor por veículo), a comparação entre as três estratégias de população inicial (5 sementes cada), o efeito do número de veículos e a comparação com outras abordagens de roteamento (busca aleatória, métodos gulosos, força bruta numa instância pequena e OR-Tools). Os números do comparativo ficam em `backend/data/benchmark_results.json`. Para gerá-los de novo (leva alguns minutos): `python -m backend.benchmark`; para incluir o OR-Tools (opcional, fora do `requirements.txt`): `pip install ortools` e `python -m backend.benchmark --only-ortools`. Se o arquivo `demo_routes.json` for apagado, o script o gera de novo usando a chave do OpenRouteService em `backend/.env`.
 
 ## Testes
 

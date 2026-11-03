@@ -31,7 +31,7 @@ from .constants import (
     WIDTH,
 )
 from .data import sao_paulo_cities
-from .models import Individual, SelectParentsArgs, SortPopulationByFitnessArgs
+from .models import SelectParentsArgs, SortPopulationByFitnessArgs
 from .ga import (
     are_priorities_on_time,
     calculate_routes,
@@ -43,7 +43,6 @@ from .ga import (
     select_parents,
     sort_population_by_fitness,
 )
-from .llm import prepare_route_data
 from .viz.draw_functions import draw_paths, draw_plot, draw_cities
 
 # Path to map image:
@@ -80,7 +79,7 @@ generation_counter = itertools.count(start=1)
 
 best_fitness_values = []
 best_solutions = []
-chosen_solution: Individual
+chosen_solution: dict
 
 # Main game loop
 running = True
@@ -204,7 +203,16 @@ while running:
     clock.tick(FPS)
 
     if not running:
-        prepare_route_data(calculated_routes, chosen_solution)
+        # Summary of the final solution (the web app is the one that asks the
+        # LLM for driver instructions, so this demo spends no OpenAI credits):
+        print("\nMelhor solução encontrada:")
+        for number, vehicle in enumerate(chosen_solution["individual"], start=1):
+            print(f"Veículo {number}: " + " -> ".join(city["name"] for city in vehicle))
+        print(f"Distância total: {chosen_solution['total_distance']:.1f}")
+        print(
+            "Prioridades dentro do prazo: "
+            + ("sim" if chosen_solution["priorities_on_time"] else "NÃO")
+        )
 
 # exit software
 pygame.quit()

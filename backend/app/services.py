@@ -62,7 +62,7 @@ def get_optimized_route(arg: GetOptimizedRouteArgs):
 
 
 def run_genetic_algorithm(arg: RunGeneticAlgorithmArgs):
-    calculated_routes = calculate_routes(arg.cities)
+    calculated_routes = arg.calculated_routes or calculate_routes(arg.cities)
     calculated_distances = calculated_routes["cities_distances"]
     calculated_durations = calculated_routes["cities_durations"]
 

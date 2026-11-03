@@ -1,0 +1,253 @@
+{
+  "instance": {
+    "cities": 15,
+    "vehicles": 3,
+    "origin": "São Paulo",
+    "deadline_seconds": 61200,
+    "seeds": 10
+  },
+  "budgets": {
+    "ga_evaluations": 25680,
+    "ga_web_evaluations": 526800
+  },
+  "methods": [
+    {
+      "method": "AG (população 200, vizinho mais próximo)",
+      "runs": 10,
+      "distance_km": {
+        "mean": 2357.1910000000003,
+        "min": 2325.8,
+        "max": 2591.83,
+        "stdev": 78.58345365915137
+      },
+      "duration_seconds": {
+        "mean": 55099.49800000001,
+        "min": 52914.100000000006,
+        "max": 65640.88,
+        "stdev": 3551.664678290449
+      },
+      "seconds": 1.059569770959206,
+      "valid_runs": 10
+    },
+    {
+      "method": "AG (população 200, aleatória)",
+      "runs": 10,
+      "distance_km": {
+        "mean": 2398.0879999999997,
+        "min": 2325.8,
+        "max": 2628.2799999999997,
+        "stdev": 107.79278007362078
+      },
+      "duration_seconds": {
+        "mean": 54779.075,
+        "min": 49845.8,
+        "max": 64450.99999999999,
+        "stdev": 4245.541307732734
+      },
+      "seconds": 1.274807516648434,
+      "valid_runs": 10
+    },
+    {
+      "method": "AG (população 1000, parâmetros do app web)",
+      "runs": 5,
+      "distance_km": {
+        "mean": 2325.8,
+        "min": 2325.8,
+        "max": 2325.8,
+        "stdev": 0.0
+      },
+      "duration_seconds": {
+        "mean": 54190.770000000004,
+        "min": 54190.770000000004,
+        "max": 54190.770000000004,
+        "stdev": 0.0
+      },
+      "seconds": 27.13573058322072,
+      "valid_runs": 5
+    },
+    {
+      "method": "Busca aleatória (25680 soluções)",
+      "runs": 10,
+      "distance_km": {
+        "mean": 3140.784,
+        "min": 2929.01,
+        "max": 3506.92,
+        "stdev": 151.5036634672575
+      },
+      "duration_seconds": {
+        "mean": 68731.001,
+        "min": 64243.5,
+        "max": 80044.66,
+        "stdev": 4334.3279113939925
+      },
+      "seconds": 3.2865000666119157,
+      "valid_runs": 10
+    },
+    {
+      "method": "Vizinho mais próximo guloso (sem busca)",
+      "runs": 10,
+      "distance_km": {
+        "mean": 2593.16,
+        "min": 2593.16,
+        "max": 2593.16,
+        "stdev": 0.0
+      },
+      "duration_seconds": {
+        "mean": 66018.39000000001,
+        "min": 66018.39000000001,
+        "max": 66018.39000000001,
+        "stdev": 0.0
+      },
+      "seconds": 2.3224973119795322e-05,
+      "valid_runs": 10
+    },
+    {
+      "method": "Inserção mais barata (melhor de 200 construções)",
+      "runs": 10,
+      "distance_km": {
+        "mean": 2819.239,
+        "min": 2707.91,
+        "max": 2899.7599999999998,
+        "stdev": 59.38297996059139
+      },
+      "duration_seconds": {
+        "mean": 65564.339,
+        "min": 55689.72,
+        "max": 85464.84000000001,
+        "stdev": 7598.204420443624
+      },
+      "seconds": 0.017744649900123477,
+      "valid_runs": 10
+    },
+    {
+      "method": "OR-Tools (mesma divisão de cidades por veículo do AG)",
+      "runs": 1,
+      "distance_km": {
+        "mean": 2325.8,
+        "min": 2325.8,
+        "max": 2325.8,
+        "stdev": 0.0
+      },
+      "duration_seconds": {
+        "mean": 54190.770000000004,
+        "min": 54190.770000000004,
+        "max": 54190.770000000004,
+        "stdev": 0.0
+      },
+      "seconds": 9.999892875086516,
+      "valid_runs": 1,
+      "routes": [
+        [
+          "São Paulo",
+          "Itapeva",
+          "Assis",
+          "Marília",
+          "Araçatuba",
+          "Jales"
+        ],
+        [
+          "São Paulo",
+          "Campinas",
+          "Bragança Paulista",
+          "Guaratinguetá",
+          "Taubaté",
+          "Caraguatatuba"
+        ],
+        [
+          "São Paulo",
+          "Bauru",
+          "São Carlos",
+          "Ribeirão Preto",
+          "Franca",
+          "Barretos"
+        ]
+      ],
+      "sizes": [
+        5,
+        5,
+        5
+      ]
+    },
+    {
+      "method": "OR-Tools (divisão livre das cidades)",
+      "runs": 1,
+      "distance_km": {
+        "mean": 2011.0900000000001,
+        "min": 2011.0900000000001,
+        "max": 2011.0900000000001,
+        "stdev": 0.0
+      },
+      "duration_seconds": {
+        "mean": 76857.37,
+        "min": 76857.37,
+        "max": 76857.37,
+        "stdev": 0.0
+      },
+      "seconds": 10.000386499799788,
+      "valid_runs": 1,
+      "routes": [
+        [
+          "São Paulo",
+          "Guaratinguetá",
+          "Taubaté",
+          "Caraguatatuba"
+        ],
+        [
+          "São Paulo",
+          "Itapeva"
+        ],
+        [
+          "São Paulo",
+          "Bragança Paulista",
+          "Campinas",
+          "São Carlos",
+          "Ribeirão Preto",
+          "Franca",
+          "Barretos",
+          "Jales",
+          "Araçatuba",
+          "Bauru",
+          "Marília",
+          "Assis"
+        ]
+      ],
+      "sizes": [
+        3,
+        1,
+        11
+      ]
+    }
+  ],
+  "small_instance": {
+    "cities": 8,
+    "vehicles": 2,
+    "balanced_optimum": {
+      "distance_km": 1129.0100000000002,
+      "duration_seconds": 36334.58,
+      "priorities_on_time": true
+    },
+    "balanced_solutions_tried": 40320,
+    "balanced_seconds": 0.1376706250011921,
+    "free_optimum": {
+      "distance_km": 1031.1599999999999,
+      "duration_seconds": 44556.06999999999,
+      "priorities_on_time": true
+    },
+    "free_solutions_tried": 282240,
+    "free_seconds": 0.8697315419558436,
+    "ga_distances": [
+      1129.0100000000002,
+      1129.0100000000002,
+      1129.0100000000002,
+      1129.0100000000002,
+      1129.0100000000002,
+      1129.0100000000002,
+      1129.0100000000002,
+      1129.0100000000002,
+      1129.0100000000002,
+      1129.0100000000002
+    ],
+    "ga_found_optimum": 10,
+    "ga_gap_percent_mean": 0.0
+  }
+}

@@ -52,6 +52,9 @@ flowchart LR
 backend/
 ├── run.py                 # ponto de entrada do servidor Flask
 ├── main.py                # demonstração standalone via Pygame
+├── demo.py                # demonstração sem interface (python -m backend.demo)
+├── baselines.py           # outras abordagens (guloso, busca aleatória, força bruta) para o comparativo
+├── benchmark.py           # compara o AG com as demais abordagens (python -m backend.benchmark)
 ├── app/                   # camada HTTP (rotas, orquestração, persistência)
 │   ├── routes.py
 │   ├── services.py        # loop do algoritmo genético (versão headless/API)
@@ -251,4 +254,6 @@ Resposta: inclui `cities` (as cidades da execução), `vehicles_number`, `best_r
 
 ## O que o modo standalone (`backend/main.py`) faz diferente
 
-`main.py` roda o mesmo algoritmo genético, mas de forma independente da API: usa sempre o conjunto fixo de 16 cidades, 3 veículos e parâmetros fixos (`backend/constants/`), e renderiza cada geração em tempo real numa janela Pygame (em vez de retornar JSON pro frontend). Não salva histórico, não chama a LLM via HTTP (imprime as instruções no console ao final) e não depende do servidor Flask estar rodando. É útil para demonstrar o algoritmo isoladamente, sem precisar subir o frontend.
+`main.py` roda o mesmo algoritmo genético, mas de forma independente da API: usa sempre o conjunto fixo de 16 cidades, 3 veículos e parâmetros fixos (`backend/constants/`), e renderiza cada geração em tempo real numa janela Pygame (em vez de retornar JSON pro frontend). Não salva histórico, não chama a LLM (ao final imprime no console só as rotas, a distância e o prazo das prioridades, sem gastar créditos da OpenAI) e não depende do servidor Flask estar rodando. É útil para demonstrar o algoritmo isoladamente, sem precisar subir o frontend.
+
+Há ainda uma demonstração **sem interface gráfica** (a pasta `notebooks/` guarda o notebook): `python -m backend.demo` (script) e `notebooks/demo.ipynb` (gráficos de convergência, rotas no mapa, comparação de estratégias e de número de veículos). Ambos usam a matriz de distâncias guardada em `backend/data/demo_routes.json`, então rodam offline, sem OpenRouteService nem OpenAI, e com semente fixa.
