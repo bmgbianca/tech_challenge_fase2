@@ -50,3 +50,6 @@ class RunGeneticAlgorithmArgs:
     max_generations: int = MAX_GENERATIONS
     plateau_window: int = PLATEAU_WINDOW
     vehicles_number: int | None = 1
+    # Distances/durations already calculated (e.g. cached by the demo). When
+    # None, they are requested to OpenRouteService:
+    calculated_routes: dict | None = None
