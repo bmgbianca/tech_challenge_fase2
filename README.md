@@ -7,7 +7,7 @@ O sistema tem duas formas de uso:
 - **Aplicação web** (recomendada): frontend em React + backend em Flask, com seleção de cidades, visualização em mapa real, replay da evolução das gerações, geração de instruções/relatórios via LLM e histórico de execuções.
 - **Demonstração standalone**: `backend/main.py`, uma janela Pygame que roda o algoritmo isoladamente, sem precisar do frontend nem do servidor web — útil para visualizar o algoritmo "puro" rodando em tempo real.
 
-Para a arquitetura detalhada (diagramas, fluxo de dados, referência de API), veja **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+Para a arquitetura detalhada (diagramas, fluxo de dados), veja **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**; para a documentação completa dos endpoints (requisições, respostas, erros e exemplos `curl`), veja **[docs/API.md](docs/API.md)**.
 
 ## Como o algoritmo genético funciona
 

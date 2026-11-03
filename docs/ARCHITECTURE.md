@@ -217,6 +217,8 @@ Esses arquivos são gerados em runtime e não são versionados no repositório (
 
 ## Referência de API
 
+Resumo dos endpoints. A documentação completa (corpos, respostas, erros e exemplos `curl`) está em **[API.md](API.md)**.
+
 | Método | Rota | Descrição |
 |---|---|---|
 | `GET` | `/api/cities` | Lista o dataset fixo de 16 cidades (pré-preenchimento do formulário) |
