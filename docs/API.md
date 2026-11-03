@@ -73,7 +73,7 @@ curl http://localhost:5001/api/cities
 
 ## GET /api/cities/search
 
-Busca municípios do estado de SP (645, via IBGE) cujo nome contém o texto, **ignorando acentos e maiúsculas**.
+Busca municípios do estado de SP (645, lista do IBGE embutida no repositório) cujo nome contém o texto, **ignorando acentos e maiúsculas**.
 
 | Parâmetro | Tipo | Descrição |
 |---|---|---|
@@ -96,7 +96,7 @@ curl "http://localhost:5001/api/cities/search?q=sao"
 
 ## POST /api/geocode-cities
 
-Resolve nomes de municípios em coordenadas aproximadas (centroide do contorno oficial do IBGE), com cache local.
+Resolve nomes de municípios em coordenadas aproximadas (geocodificação da OpenRouteService, restrita ao estado de SP), com cache local.
 
 **Corpo:**
 
@@ -128,7 +128,7 @@ Cada valor é `[longitude, latitude]`.
 | Código | Quando |
 |---|---|
 | 400 | `cities` ausente ou vazio, ou município inexistente |
-| 500 | Falha inesperada (por exemplo, IBGE fora do ar) |
+| 500 | Falha inesperada (por exemplo, OpenRouteService fora do ar) |
 
 ---
 
