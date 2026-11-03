@@ -12,7 +12,7 @@ from ..llm import (
 from ..services import geocode_cities, get_sp_municipalities
 from .history import filter_runs_by_period, get_route_runs, save_route_run
 from .report_cache import build_cache_key, get_cached_report, save_report
-from .services import get_optimized_route, get_routes_names
+from .services import get_optimized_route, get_routes_names, get_vehicles_summary
 
 routes = Blueprint("routes", __name__)
 
@@ -142,6 +142,11 @@ def optimize():
         "stops_count": stops_count,
         "vehicles_number": vehicles_number,
         "best_route": best_route,
+        "vehicles_summary": get_vehicles_summary(
+            best_solution["individual"],
+            result["calculated_routes"],
+            has_origin=bool(origin_city),
+        ),
     }
 
     return jsonify(response)

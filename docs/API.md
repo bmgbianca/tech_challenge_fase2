@@ -175,6 +175,17 @@ curl -X POST http://localhost:5001/api/optimized-route \
   "total_duration": 18240.0,
   "priorities_on_time": true,
   "stops_count": 4,
+  "vehicles_summary": [
+    {
+      "vehicle": 1,
+      "route": ["São Paulo", "Campinas"],
+      "distance_km": 99.5,
+      "duration_seconds": 6000.0,
+      "stops_count": 1,
+      "priority_cities_count": 1,
+      "priorities_on_time": true
+    }
+  ],
   "fitness_history": [530.2, 498.1, 412.7],
   "snapshots": [
     {
@@ -198,6 +209,7 @@ curl -X POST http://localhost:5001/api/optimized-route \
 | `total_duration` | Duração da solução, em segundos (a do veículo mais demorado) |
 | `priorities_on_time` | `true` se todas as cidades prioritárias chegam dentro de 17h |
 | `stops_count` | Cidades distintas atendidas (a origem conta uma vez) |
+| `vehicles_summary` | Resumo por veículo (mesma ordem de `best_route`): `distance_km`, `duration_seconds`, `stops_count` (sem contar a origem), `priority_cities_count` e `priorities_on_time` (prioridades do veículo dentro de 17h) |
 | `fitness_history` | Melhor distância de cada geração |
 | `snapshots` | Estado de gerações selecionadas, para o replay no mapa: melhor e segunda melhor rota e distância |
 

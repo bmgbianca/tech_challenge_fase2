@@ -109,3 +109,59 @@ class TestRunGeneticAlgorithm:
         result = run(None, 8)
         routes = services.get_routes_names(result["best_solution"]["individual"])
         assert all(len(route) == 1 for route in routes)
+
+
+class TestGetVehiclesSummary:
+    @pytest.fixture
+    def routes(self):
+        pairs = [(a, b) for a in range(5) for b in range(5) if a != b]
+        return {
+            "cities_distances": {(a, b): 10.0 * abs(a - b) for a, b in pairs},
+            "cities_durations": {(a, b): 600.0 * abs(a - b) for a, b in pairs},
+        }
+
+    @pytest.fixture
+    def cities(self):
+        return [make_city(name, index) for index, name in enumerate("ABCDE")]
+
+    def test_one_item_per_vehicle_with_its_own_numbers(self, cities, routes):
+        a, b, c, d, e = cities
+
+        summary = services.get_vehicles_summary([[a, b, c], [a, e]], routes, True)
+
+        assert [item["vehicle"] for item in summary] == [1, 2]
+        assert [item["route"] for item in summary] == [["A", "B", "C"], ["A", "E"]]
+        assert [item["distance_km"] for item in summary] == [20.0, 40.0]
+        assert [item["duration_seconds"] for item in summary] == [1200.0, 2400.0]
+
+    def test_the_distances_add_up_to_the_fitness(self, cities, routes):
+        a, b, c, d, e = cities
+        individual = [[a, b, c], [a, d, e]]
+
+        summary = services.get_vehicles_summary(individual, routes, True)
+
+        assert sum(item["distance_km"] for item in summary) == services.calculate_fitness(
+            routes["cities_distances"], individual
+        )
+
+    def test_fixed_origin_is_not_counted_as_a_stop(self, cities, routes):
+        a, b, c, *_ = cities
+
+        with_origin = services.get_vehicles_summary([[a, b, c]], routes, True)
+        without_origin = services.get_vehicles_summary([[a, b, c]], routes, False)
+
+        assert with_origin[0]["stops_count"] == 2
+        assert without_origin[0]["stops_count"] == 3
+
+    def test_priorities_are_checked_per_vehicle(self, routes):
+        cities = [make_city(name, index, priority=(index == 4)) for index, name in enumerate("ABCDE")]
+        a, b, c, d, e = cities
+
+        # E is 4 steps from A (2400 s): on time with the default 17 h, late with 30 min
+        on_time = services.get_vehicles_summary([[a, b], [a, e]], routes, True)
+        with patch.object(services, "TIME_LIMIT", 1800):
+            late = services.get_vehicles_summary([[a, b], [a, e]], routes, True)
+
+        assert [i["priorities_on_time"] for i in on_time] == [True, True]
+        assert [i["priorities_on_time"] for i in late] == [True, False]
+        assert [i["priority_cities_count"] for i in on_time] == [0, 1]

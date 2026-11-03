@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchDriverInstructions } from "../api";
 import DriverInstructionsModal from "./DriverInstructionsModal";
-import { normalizeRoutes } from "../routes";
+import { getVehicleColor, normalizeRoutes } from "../routes";
 
 function formatDistance(km) {
   if (km == null) return "–";
@@ -13,6 +13,45 @@ function formatDuration(seconds) {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.round((seconds % 3600) / 60);
   return `${hours}h ${minutes}min`;
+}
+
+function VehicleCard({ vehicle, index }) {
+  const hasPriorities = vehicle.priority_cities_count > 0;
+
+  return (
+    <div
+      className="vehicle-card"
+      style={{ borderLeftColor: getVehicleColor(index) }}
+    >
+      <div className="vehicle-card__header">
+        <strong>Veículo {vehicle.vehicle}</strong>
+        {hasPriorities && (
+          <span
+            className={`vehicle-card__badge ${
+              vehicle.priorities_on_time
+                ? "vehicle-card__badge--ok"
+                : "vehicle-card__badge--late"
+            }`}
+          >
+            {vehicle.priorities_on_time
+              ? "Prioridades no prazo"
+              : "Prioridade atrasada"}
+          </span>
+        )}
+      </div>
+
+      <div className="vehicle-card__metrics">
+        <span>📍 {formatDistance(vehicle.distance_km)}</span>
+        <span>🕒 {formatDuration(vehicle.duration_seconds)}</span>
+        <span>
+          🏁 {vehicle.stops_count}{" "}
+          {vehicle.stops_count === 1 ? "cidade" : "cidades"}
+        </span>
+      </div>
+
+      <div className="vehicle-card__route">{vehicle.route.join(" → ")}</div>
+    </div>
+  );
 }
 
 export default function RouteSummary({ result, error }) {
@@ -98,6 +137,15 @@ export default function RouteSummary({ result, error }) {
           <div className="summary__value">{result?.stops_count ?? "–"}</div>
         </div>
       </div>
+
+      {result?.vehicles_summary?.length > 1 && (
+        <div className="summary__vehicles">
+          <h3>Por veículo</h3>
+          {result.vehicles_summary.map((vehicle, index) => (
+            <VehicleCard key={vehicle.vehicle} vehicle={vehicle} index={index} />
+          ))}
+        </div>
+      )}
 
       <button
         className="secondary-button"
