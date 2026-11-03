@@ -1,6 +1,6 @@
 # Otimização de Rotas para Distribuição de Medicamentos
 
-Projeto de pós-graduação (Tech Challenge) que resolve uma variação do problema do caixeiro viajante (TSP) — o "caixeiro viajante médico" — usando um **Algoritmo Genético**, com apoio de **LLM** para geração de instruções e relatórios. O objetivo é encontrar a rota mais curta para um veículo entregar medicamentos e insumos a um conjunto de cidades do estado de São Paulo, respeitando prazos de entrega para cidades com prioridade (ex: medicamentos críticos).
+Projeto de pós-graduação (Tech Challenge) que resolve um **problema de roteirização de veículos de rota aberta (open VRP)** — evolução do "caixeiro viajante médico" (TSP) — usando um **Algoritmo Genético**, com apoio de **LLM** para geração de instruções e relatórios. O objetivo é dividir um conjunto de cidades do estado de São Paulo entre **vários veículos** e encontrar as rotas mais curtas para entregar medicamentos e insumos, respeitando prazos de entrega para cidades com prioridade (ex: medicamentos críticos). As rotas são **abertas** (os veículos não voltam ao ponto de partida) e a **cidade de origem é opcional**: se informada, todos os veículos partem dela; se não, cada veículo começa na primeira cidade da sua rota.
 
 O sistema tem duas formas de uso:
 
@@ -13,12 +13,14 @@ Para a arquitetura detalhada (diagramas, fluxo de dados, referência de API), ve
 
 O algoritmo evolui uma população de rotas candidatas ao longo de várias gerações:
 
-1. **População inicial** — gerada por uma entre três estratégias: aleatória, vizinho mais próximo (nearest neighbor) ou inserção mais barata (cheapest insertion), sempre partindo de uma cidade de origem fixa.
-2. **Fitness** — a distância total da rota. Rotas que não entregam a tempo nas cidades prioritárias (dentro do limite de 17h definido em `config/constants.py`) são tratadas como inválidas e penalizadas na seleção.
-3. **Seleção** — torneio de tamanho 2, priorizando rotas válidas com menor distância; entre rotas inválidas, vence a que atende mais entregas prioritárias no prazo.
-4. **Crossover** — order crossover (OX), que preserva um segmento de um dos pais e completa o restante com a ordem de visitação do outro pai.
-5. **Mutação** — embaralha um segmento contíguo de 2 a 5 cidades da rota, preservando a cidade de origem.
-6. **Elitismo** — as 4 melhores rotas de cada geração são mantidas sem alteração.
+Cada indivíduo é uma lista de rotas, uma por veículo (`List[List[CityEntity]]`). Quando há origem fixa (cidade com `id == 0`), ela é a primeira cidade de todas as rotas; as demais cidades aparecem em exatamente um veículo.
+
+1. **População inicial** — gerada por uma entre três estratégias: aleatória, vizinho mais próximo (nearest neighbor) ou inserção mais barata (cheapest insertion). As cidades restantes vão para o veículo cuja última cidade está mais próxima (NN) ou de menor custo de inserção (CI). Pedir mais veículos do que cidades a visitar gera `ValueError`.
+2. **Fitness** — soma das distâncias de todos os veículos. Uma solução só é válida se **todas** as cidades prioritárias de **todos** os veículos forem atendidas dentro do limite de 17h (`TIME_LIMIT` em `backend/constants/ga.py`). A duração da solução é a do veículo mais demorado.
+3. **Seleção** — torneio de tamanho 2. Entre soluções válidas vence a de menor distância; entre inválidas vence a com menos prioridades fora do prazo, depois a de menor atraso total e, por fim, a de menor distância.
+4. **Crossover** — order crossover (OX) aplicado à rota "achatada" (origem uma única vez); os filhos são divididos de volta nos veículos mantendo o tamanho da rota de cada veículo nos pais.
+5. **Mutação** — sorteia **um** veículo e embaralha um segmento contíguo de 2 a 5 cidades dele, preservando a origem fixa (quando existe).
+6. **Elitismo** — as 4 melhores soluções de cada geração são mantidas sem alteração.
 7. **Parada** — ao atingir 3000 gerações ou quando a melhor solução fica estável por 500 gerações seguidas.
 
 ## Estrutura do projeto
@@ -72,7 +74,7 @@ cd frontend
 npm run dev
 ```
 
-Acesse `http://localhost:5173`. A aba **Início** permite escolher cidades de origem/destino/prioridade e gerar a rota otimizada, com replay animado da evolução das gerações no mapa. As abas **Relatórios** e **Recomendações** mostram análises geradas por LLM sobre o histórico de execuções.
+Acesse `http://localhost:5173`. A aba **Início** permite escolher a cidade de origem (opcional — limpe o campo para ficar "Sem origem fixa"), as cidades de destino/prioridade, o número de veículos e gerar as rotas otimizadas, com replay animado da evolução das gerações no mapa (uma cor por veículo). A busca de cidades ignora acentos e maiúsculas, e a cidade de origem não pode ser escolhida também como destino. O botão de instruções ao motorista gera um texto por veículo, exibido em abas "Motorista 1", "Motorista 2"… quando há mais de um veículo. As abas **Relatórios** e **Recomendações** mostram análises geradas por LLM sobre o histórico de execuções.
 
 ### Demonstração standalone (Pygame)
 
@@ -81,15 +83,15 @@ source .venv/bin/activate
 python backend/main.py
 ```
 
-Abre uma janela mostrando o mapa de São Paulo, as cidades (vermelho), a melhor rota (azul) e a segunda melhor (preto), além do gráfico de evolução do fitness, em tempo real. Pressione `Q` ou feche a janela para interromper antes da convergência. Usa sempre o conjunto fixo de 16 cidades e parâmetros fixos definidos em `config/constants.py` — não depende do frontend nem do servidor Flask.
+Abre uma janela mostrando o mapa de São Paulo, as cidades (vermelho), a melhor solução (uma cor por veículo, rotas abertas) e a segunda melhor, além do gráfico de evolução do fitness, em tempo real. Pressione `Q` ou feche a janela para interromper antes da convergência. Usa sempre o conjunto fixo de 16 cidades, 3 veículos e parâmetros fixos definidos em `backend/constants/` — não depende do frontend nem do servidor Flask.
 
 ## Testes
 
-A suíte de testes (pytest) cobre a lógica pura do algoritmo genético — fitness, cálculo de prazos, validação de solução, crossover, mutação e as estratégias de população inicial — além do cliente de API (com chamadas de rede mockadas). Para rodar, a partir da raiz do projeto:
+A suíte de testes (pytest) cobre o algoritmo genético para múltiplos veículos (fitness, prazos, seleção, crossover, mutação e estratégias de população inicial), helpers, serviços e rotas da API Flask (histórico, otimização, instruções ao motorista, busca de cidades), a montagem dos dados/prompts da LLM e o cliente de API — com chamadas externas mockadas. O frontend não possui testes automatizados. Para rodar, a partir da raiz do projeto:
 
 ```bash
 source .venv/bin/activate
-pytest backend -v
+pytest backend -v   # precisa de OPENROUTESERVICE_API_KEY definida (pode ser um valor qualquer)
 ```
 
 ## Licença

@@ -1,93 +1,390 @@
+from unittest.mock import patch
+
 import pytest
 
 from backend.ga.initial_population import (
-    generate_cheapest_insertion_individual,
-    generate_nearest_neighbor_individual,
+    GenerateCheapestInsertionArgs,
+    GenerateNearestNeighborArgs,
+    GenerateRandomArgs,
+    InitialPopulationArgs,
+    generate_cheapest_insertion_population,
+    generate_initial_population,
+    generate_nearest_neighbor_population,
     generate_random_population,
-    generate_start_city,
 )
 
+from backend.helpers import generate_start_city
 
-def make_city(name, location):
-    return {"name": name, "id": location, "priority": False}
+ORIGIN_NAME = "A"
+
+
+def make_city(name, city_id):
+    return {"name": name, "id": city_id, "priority": False}
 
 
 @pytest.fixture
 def cities():
-    return [
-        make_city("A", (0, 0)),
-        make_city("B", (1, 0)),
-        make_city("C", (2, 0)),
-        make_city("D", (3, 0)),
-    ]
+    # 7 cities, origin "A" has id 0, so there are 6 clients to distribute
+    return [make_city(name, index) for index, name in enumerate("ABCDEFG")]
 
 
 @pytest.fixture
 def distances_matrix(cities):
-    matrix = {}
-    for city_a in cities:
-        for city_b in cities:
-            if city_a is city_b:
-                continue
-            loc_a = city_a["id"]
-            loc_b = city_b["id"]
-            matrix[(loc_a, loc_b)] = abs(loc_a[0] - loc_b[0])
-    return matrix
+    # cities lie on a line: distance is the difference between ids
+    return {
+        (city_a["id"], city_b["id"]): abs(city_a["id"] - city_b["id"])
+        for city_a in cities
+        for city_b in cities
+        if city_a is not city_b
+    }
+
+
+def assert_valid_individual(individual, cities, vehicles_number, has_origin=True):
+    """Every city must be visited exactly once (the origin is the exception:
+    it starts every vehicle route)."""
+    assert len(individual) == vehicles_number
+
+    if has_origin:
+        assert all(route[0]["name"] == ORIGIN_NAME for route in individual)
+        visited_ids = [city["id"] for route in individual for city in route[1:]]
+        expected_ids = [city["id"] for city in cities if city["name"] != ORIGIN_NAME]
+    else:
+        visited_ids = [city["id"] for route in individual for city in route]
+        expected_ids = [city["id"] for city in cities]
+
+    assert sorted(visited_ids) == sorted(expected_ids)
+
+
+def route_names(individual):
+    return [[city["name"] for city in route] for route in individual]
 
 
 class TestGenerateRandomPopulation:
     def test_population_has_requested_size(self, cities):
-        population = generate_random_population(5, cities)
+        population = generate_random_population(
+            GenerateRandomArgs(
+                population_size=5, cities=cities, origin_city_name=ORIGIN_NAME
+            )
+        )
         assert len(population) == 5
 
-    def test_every_individual_contains_all_cities_once(self, cities):
-        population = generate_random_population(5, cities)
+    @pytest.mark.parametrize("vehicles_number", [1, 2, 3, 4])
+    def test_origin_starts_every_route_and_clients_are_visited_once(
+        self, cities, vehicles_number
+    ):
+        population = generate_random_population(
+            GenerateRandomArgs(
+                population_size=10,
+                cities=cities,
+                origin_city_name=ORIGIN_NAME,
+                vehicles_number=vehicles_number,
+            )
+        )
         for individual in population:
-            assert sorted(individual, key=id) == sorted(cities, key=id)
+            assert_valid_individual(individual, cities, vehicles_number)
 
-    def test_fixed_start_city_is_always_first(self, cities):
-        population = generate_random_population(5, cities, fixed_start_city_name="C")
+    @pytest.mark.parametrize("vehicles_number", [1, 2, 3])
+    def test_works_without_origin(self, cities, vehicles_number):
+        population = generate_random_population(
+            GenerateRandomArgs(
+                population_size=10,
+                cities=cities,
+                vehicles_number=vehicles_number,
+            )
+        )
         for individual in population:
-            assert individual[0]["name"] == "C"
+            assert_valid_individual(
+                individual, cities, vehicles_number, has_origin=False
+            )
+
+    def test_routes_are_balanced_between_vehicles(self, cities):
+        # 6 clients and 3 vehicles: 2 clients per vehicle (+ origin)
+        population = generate_random_population(
+            GenerateRandomArgs(
+                population_size=10,
+                cities=cities,
+                origin_city_name=ORIGIN_NAME,
+                vehicles_number=3,
+            )
+        )
+        for individual in population:
+            assert [len(route) for route in individual] == [3, 3, 3]
+
+    def test_remaining_cities_go_to_the_first_vehicles(self, cities):
+        # 6 clients and 4 vehicles: 1 client each, the 2 remaining go to the
+        # first two vehicles
+        population = generate_random_population(
+            GenerateRandomArgs(
+                population_size=10,
+                cities=cities,
+                origin_city_name=ORIGIN_NAME,
+                vehicles_number=4,
+            )
+        )
+        for individual in population:
+            assert [len(route) for route in individual] == [3, 3, 2, 2]
+
+    def test_raises_when_origin_not_found(self, cities):
+        with pytest.raises(ValueError):
+            generate_random_population(
+                GenerateRandomArgs(
+                    population_size=5, cities=cities, origin_city_name="Nonexistent"
+                )
+            )
+
+
+class TestGenerateNearestNeighborPopulation:
+    def test_population_has_requested_size(self, cities, distances_matrix):
+        population = generate_nearest_neighbor_population(
+            GenerateNearestNeighborArgs(
+                distances_matrix=distances_matrix,
+                population_size=5,
+                cities=cities,
+                origin_city_name=ORIGIN_NAME,
+            )
+        )
+        assert len(population) == 5
+
+    @pytest.mark.parametrize("vehicles_number", [1, 2, 3, 4])
+    def test_origin_starts_every_route_and_clients_are_visited_once(
+        self, cities, distances_matrix, vehicles_number
+    ):
+        population = generate_nearest_neighbor_population(
+            GenerateNearestNeighborArgs(
+                distances_matrix=distances_matrix,
+                population_size=10,
+                cities=cities,
+                origin_city_name=ORIGIN_NAME,
+                vehicles_number=vehicles_number,
+            )
+        )
+        for individual in population:
+            assert_valid_individual(individual, cities, vehicles_number)
+
+    @pytest.mark.parametrize("vehicles_number", [1, 2, 3])
+    def test_works_without_origin(self, cities, distances_matrix, vehicles_number):
+        population = generate_nearest_neighbor_population(
+            GenerateNearestNeighborArgs(
+                distances_matrix=distances_matrix,
+                population_size=10,
+                cities=cities,
+                vehicles_number=vehicles_number,
+            )
+        )
+        for individual in population:
+            assert_valid_individual(
+                individual, cities, vehicles_number, has_origin=False
+            )
+
+    def test_first_individual_is_the_greedy_one_with_single_vehicle(
+        self, cities, distances_matrix
+    ):
+        population = generate_nearest_neighbor_population(
+            GenerateNearestNeighborArgs(
+                distances_matrix=distances_matrix,
+                population_size=5,
+                cities=cities,
+                origin_city_name=ORIGIN_NAME,
+                vehicles_number=1,
+            )
+        )
+        assert route_names(population[0]) == [["A", "B", "C", "D", "E", "F", "G"]]
+
+    def test_first_individual_is_the_greedy_one_with_two_vehicles(
+        self, cities, distances_matrix
+    ):
+        population = generate_nearest_neighbor_population(
+            GenerateNearestNeighborArgs(
+                distances_matrix=distances_matrix,
+                population_size=5,
+                cities=cities,
+                origin_city_name=ORIGIN_NAME,
+                vehicles_number=2,
+            )
+        )
+        assert route_names(population[0]) == [
+            ["A", "B", "C", "D"],
+            ["A", "E", "F", "G"],
+        ]
+
+    def test_raises_when_origin_not_found(self, cities, distances_matrix):
+        with pytest.raises(ValueError):
+            generate_nearest_neighbor_population(
+                GenerateNearestNeighborArgs(
+                    distances_matrix=distances_matrix,
+                    population_size=5,
+                    cities=cities,
+                    origin_city_name="Nonexistent",
+                )
+            )
+
+
+class TestGenerateCheapestInsertionPopulation:
+    def test_population_has_requested_size(self, cities, distances_matrix):
+        population = generate_cheapest_insertion_population(
+            GenerateCheapestInsertionArgs(
+                distances_matrix=distances_matrix,
+                population_size=5,
+                cities=cities,
+                origin_city_name=ORIGIN_NAME,
+            )
+        )
+        assert len(population) == 5
+
+    @pytest.mark.parametrize("vehicles_number", [1, 2, 3, 4])
+    def test_origin_starts_every_route_and_clients_are_visited_once(
+        self, cities, distances_matrix, vehicles_number
+    ):
+        population = generate_cheapest_insertion_population(
+            GenerateCheapestInsertionArgs(
+                distances_matrix=distances_matrix,
+                population_size=10,
+                cities=cities,
+                origin_city_name=ORIGIN_NAME,
+                vehicles_number=vehicles_number,
+            )
+        )
+        for individual in population:
+            assert_valid_individual(individual, cities, vehicles_number)
+
+    @pytest.mark.parametrize("vehicles_number", [1, 2, 3])
+    def test_works_without_origin(self, cities, distances_matrix, vehicles_number):
+        population = generate_cheapest_insertion_population(
+            GenerateCheapestInsertionArgs(
+                distances_matrix=distances_matrix,
+                population_size=10,
+                cities=cities,
+                vehicles_number=vehicles_number,
+            )
+        )
+        for individual in population:
+            assert_valid_individual(
+                individual, cities, vehicles_number, has_origin=False
+            )
+
+    def test_single_vehicle_route_on_a_line_is_always_in_order(
+        self, cities, distances_matrix
+    ):
+        # cities lie on a line and the origin is at one end: the cheapest
+        # insertion always ends up with the cities sorted by distance
+        population = generate_cheapest_insertion_population(
+            GenerateCheapestInsertionArgs(
+                distances_matrix=distances_matrix,
+                population_size=5,
+                cities=cities,
+                origin_city_name=ORIGIN_NAME,
+                vehicles_number=1,
+            )
+        )
+        for individual in population:
+            assert route_names(individual) == [["A", "B", "C", "D", "E", "F", "G"]]
+
+    def test_raises_when_origin_not_found(self, cities, distances_matrix):
+        with pytest.raises(ValueError):
+            generate_cheapest_insertion_population(
+                GenerateCheapestInsertionArgs(
+                    distances_matrix=distances_matrix,
+                    population_size=5,
+                    cities=cities,
+                    origin_city_name="Nonexistent",
+                )
+            )
+
+
+class TestGenerateInitialPopulation:
+    def make_args(self, cities, distances_matrix, **overrides):
+        args = {
+            "population_strategy": "random",
+            "distances_matrix": distances_matrix,
+            "population_size": 5,
+            "cities": cities,
+            "origin_city_name": ORIGIN_NAME,
+        }
+        args.update(overrides)
+        return InitialPopulationArgs(**args)
+
+    @pytest.mark.parametrize(
+        "strategy", ["random", "nearest_neighbor", "cheapest_insertion"]
+    )
+    def test_generates_valid_population_for_each_strategy(
+        self, cities, distances_matrix, strategy
+    ):
+        population = generate_initial_population(
+            self.make_args(
+                cities,
+                distances_matrix,
+                population_strategy=strategy,
+                vehicles_number=2,
+            )
+        )
+        assert len(population) == 5
+        for individual in population:
+            assert_valid_individual(individual, cities, 2)
+
+    def test_unknown_strategy_falls_back_to_random(self, cities, distances_matrix):
+        population = generate_initial_population(
+            self.make_args(cities, distances_matrix, population_strategy="unknown")
+        )
+        assert len(population) == 5
+        for individual in population:
+            assert_valid_individual(individual, cities, 1)
+
+    @pytest.mark.parametrize(
+        "strategy", ["random", "nearest_neighbor", "cheapest_insertion", "unknown"]
+    )
+    def test_raises_when_there_are_more_vehicles_than_cities_to_visit(
+        self, cities, distances_matrix, strategy
+    ):
+        # 7 cities with the origin leaves 6 cities to visit
+        with pytest.raises(ValueError):
+            generate_initial_population(
+                self.make_args(
+                    cities,
+                    distances_matrix,
+                    population_strategy=strategy,
+                    vehicles_number=len(cities),
+                )
+            )
+
+    def test_vehicles_number_defaults_to_one(self, cities, distances_matrix):
+        population = generate_initial_population(
+            self.make_args(cities, distances_matrix)
+        )
+        assert all(len(individual) == 1 for individual in population)
+
+    def test_raises_when_origin_not_found(self, cities, distances_matrix):
+        with pytest.raises(ValueError):
+            generate_initial_population(
+                self.make_args(cities, distances_matrix, origin_city_name="Nonexistent")
+            )
+
+    @pytest.mark.parametrize(
+        "strategy, function_name",
+        [
+            ("random", "generate_random_population"),
+            ("nearest_neighbor", "generate_nearest_neighbor_population"),
+            ("cheapest_insertion", "generate_cheapest_insertion_population"),
+        ],
+    )
+    def test_dispatches_to_the_matching_generator(
+        self, cities, distances_matrix, strategy, function_name
+    ):
+        with patch(f"backend.ga.initial_population.{function_name}") as generator:
+            generate_initial_population(
+                self.make_args(cities, distances_matrix, population_strategy=strategy)
+            )
+        generator.assert_called_once()
 
 
 class TestGenerateStartCity:
     def test_returns_requested_city(self, cities):
-        start_city = generate_start_city(cities, fixed_start_city_name="B")
+        start_city = generate_start_city(cities, origin_city="B")
         assert start_city["name"] == "B"
 
     def test_raises_when_city_not_found(self, cities):
         with pytest.raises(ValueError):
-            generate_start_city(cities, fixed_start_city_name="Nonexistent")
+            generate_start_city(cities, origin_city="Nonexistent")
 
-    def test_returns_a_city_from_the_list_when_no_fixed_start(self, cities):
+    def test_returns_a_city_from_the_list_when_no_origin(self, cities):
         start_city = generate_start_city(cities)
         assert start_city in cities
-
-
-class TestGenerateNearestNeighborIndividual:
-    def test_visits_every_city_exactly_once(self, cities, distances_matrix):
-        individual = generate_nearest_neighbor_individual(
-            distances_matrix, cities, start_city=cities[0]
-        )
-        assert sorted(individual, key=id) == sorted(cities, key=id)
-
-    def test_starts_at_given_city(self, cities, distances_matrix):
-        individual = generate_nearest_neighbor_individual(
-            distances_matrix, cities, start_city=cities[2]
-        )
-        assert individual[0] is cities[2]
-
-
-class TestGenerateCheapestInsertionIndividual:
-    def test_visits_every_city_exactly_once(self, cities, distances_matrix):
-        individual = generate_cheapest_insertion_individual(
-            distances_matrix, cities, fixed_start_city_name="A"
-        )
-        assert sorted(individual, key=id) == sorted(cities, key=id)
-
-    def test_starts_at_fixed_city(self, cities, distances_matrix):
-        individual = generate_cheapest_insertion_individual(
-            distances_matrix, cities, fixed_start_city_name="D"
-        )
-        assert individual[0]["name"] == "D"

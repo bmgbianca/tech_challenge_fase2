@@ -1,7 +1,7 @@
 import json
 from typing import List
 
-from ..config import convert_seconds
+from ..helpers import convert_seconds
 from .llm_client import LLMClient
 
 RECOMMENDATIONS_INSTRUCTIONS = """
@@ -28,8 +28,9 @@ REGRAS ABSOLUTAS (quebrar qualquer uma delas invalida o relatório):
    confiáveis, descreva brevemente o que existe até agora, e pare por aí
    — não force recomendações especulativas.
 6. Trate execuções de conjuntos de cidades diferentes (city_set_size
+   diferente) ou de números de veículos diferentes (vehicles_number
    diferente) como contextos distintos: nunca compare a distância ou
-   duração absoluta entre execuções de tamanhos de conjunto diferentes,
+   duração absoluta entre execuções de contextos diferentes,
    apenas os parâmetros do algoritmo (population_type, population_size,
    mutation_probability) e métricas relativas (gerações até convergir).
 7. Não repita o JSON bruto no relatório. Escreva em prosa e listas.
@@ -39,7 +40,8 @@ REGRAS ABSOLUTAS (quebrar qualquer uma delas invalida o relatório):
 
 ESTRUTURA OBRIGATÓRIA DO RELATÓRIO (use estes títulos, nesta ordem):
 1. Visão geral — quantas execuções existem no total, quantos conjuntos de
-   cidades distintos (city_set_size) estão representados, e o período
+   cidades distintos (city_set_size) e quantas quantidades de veículos
+   (vehicles_number) estão representados, e o período
    coberto (primeira e última data).
 2. Padrões identificados — quais combinações de population_type,
    population_size e mutation_probability aparecem repetidamente
@@ -56,6 +58,7 @@ ESTRUTURA OBRIGATÓRIA DO RELATÓRIO (use estes títulos, nesta ordem):
 FORMATO DOS DADOS DE ENTRADA:
 Uma lista de execuções, cada uma com os campos: date (data/hora em UTC),
 city_set_size (quantidade de cidades na rota daquela execução),
+vehicles_number (quantidade de veículos daquela execução),
 population_type, population_size, mutation_probability, generations_run
 (quantas gerações o algoritmo rodou até convergir), distance_km (distância
 total da rota em km), duration (par de números: horas e minutos estimados
@@ -80,6 +83,7 @@ def prepare_process_recommendations_data(runs: List[dict]) -> List[dict]:
             {
                 "date": run["created_at"],
                 "city_set_size": len(run.get("city_set", run["best_route"])),
+                "vehicles_number": run.get("vehicles_number", 1),
                 "population_type": run["population_type"],
                 "population_size": run["population_size"],
                 "mutation_probability": run["mutation_probability"],

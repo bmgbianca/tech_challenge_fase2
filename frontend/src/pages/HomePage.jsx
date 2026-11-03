@@ -18,26 +18,42 @@ function toOption(city) {
   return { value: city.name, label: city.name };
 }
 
+// The numeric inputs keep what the user typed as text (so that clearing the
+// field leaves it empty instead of forcing a 0 that would turn "2" into "02").
+// An empty field becomes NaN, which fails every validation below.
+function toNumber(value) {
+  return value === "" || value === null || value === undefined
+    ? NaN
+    : Number(value);
+}
+
 function validateParams(params) {
   const errors = {};
+  const vehiclesNumber = toNumber(params.vehiclesNumber);
+  const populationSize = toNumber(params.populationSize);
+  const mutationProbability = toNumber(params.mutationProbability);
 
-  if (!params.originCity) {
-    errors.originCity = "Selecione a cidade de origem.";
-  }
   if (!params.destinationCities || params.destinationCities.length === 0) {
     errors.destinationCities = "Selecione ao menos uma cidade de destino.";
+  }
+  if (!Number.isInteger(vehiclesNumber) || vehiclesNumber < 1) {
+    errors.vehiclesNumber = "Informe um número inteiro de veículos (mínimo 1).";
+  } else if (
+    params.destinationCities &&
+    vehiclesNumber > params.destinationCities.length
+  ) {
+    errors.vehiclesNumber = `O número de veículos não pode ser maior que o de cidades de destino (${params.destinationCities.length}).`;
   }
   if (!params.populationType) {
     errors.populationType = "Selecione uma estratégia de população.";
   }
-  if (!params.populationSize || params.populationSize < 4) {
+  if (!Number.isInteger(populationSize) || populationSize < 4) {
     errors.populationSize = "Informe um tamanho de população de pelo menos 4.";
   }
   if (
-    params.mutationProbability === null ||
-    params.mutationProbability === undefined ||
-    params.mutationProbability < 0 ||
-    params.mutationProbability > 1
+    Number.isNaN(mutationProbability) ||
+    mutationProbability < 0 ||
+    mutationProbability > 1
   ) {
     errors.mutationProbability = "Informe um valor entre 0.0 e 1.0.";
   }
@@ -51,6 +67,7 @@ export default function HomePage() {
     originCity: null,
     destinationCities: [],
     priorityCities: [],
+    vehiclesNumber: 3,
     populationType: "random",
     populationSize: 500,
     mutationProbability: 0.5,
@@ -147,7 +164,9 @@ export default function HomePage() {
         };
       };
 
-      const originCity = toCityEntity(originCityName, 0);
+      // Without a fixed origin, originCity is null: no city gets id 0 and
+      // the vehicles start from different cities.
+      const originCity = originCityName ? toCityEntity(originCityName, 0) : null;
       const destinationCities = destinationCityNames.map((name, index) =>
         toCityEntity(name, index + 1)
       );
@@ -155,11 +174,14 @@ export default function HomePage() {
       // Redraw the map markers for the newly chosen set of cities right
       // away, before the optimization call even starts — the route lines
       // then get drawn on top of this same set once it comes back.
-      setCities([originCity, ...destinationCities]);
+      setCities([originCity, ...destinationCities].filter(Boolean));
 
       setLoadingMessage(OPTIMIZING_MESSAGE);
       const data = await optimizeRoute({
         ...params,
+        vehiclesNumber: Number(params.vehiclesNumber),
+        populationSize: Number(params.populationSize),
+        mutationProbability: Number(params.mutationProbability),
         originCity,
         destinationCities,
       });

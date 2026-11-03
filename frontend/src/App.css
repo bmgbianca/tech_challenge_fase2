@@ -717,8 +717,23 @@ body {
 }
 
 .reports__header p {
-  margin: 0 0 24px;
+  margin: 0 0 12px;
   color: #6b7488;
+  font-size: 13px;
+}
+
+.reports__period {
+  display: inline-block;
+  margin-bottom: 24px;
+  color: #6b7488;
+  font-size: 13px;
+}
+
+.reports__period select {
+  margin-left: 4px;
+  padding: 4px 8px;
+  border: 1px solid #d5d9e2;
+  border-radius: 6px;
   font-size: 13px;
 }
 
@@ -957,4 +972,56 @@ body {
   border: 1px solid #eef0f4;
   padding: 6px 8px;
   text-align: left;
+}
+
+.route-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 8px 18px;
+  list-style: none;
+  border-top: 1px solid #eef0f4;
+  font-size: 12px;
+  color: #4a5368;
+}
+
+.route-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.route-legend__color {
+  width: 18px;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.instructions-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e3e6ee;
+}
+
+.instructions-tabs__tab {
+  padding: 8px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: #6b7488;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.instructions-tabs__tab:hover {
+  color: #2457ff;
+}
+
+.instructions-tabs__tab--active {
+  color: #2457ff;
+  border-bottom-color: #2457ff;
 }

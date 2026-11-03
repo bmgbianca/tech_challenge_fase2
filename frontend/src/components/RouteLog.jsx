@@ -37,7 +37,9 @@ export default function RouteLog({ snapshots, currentIndex, error }) {
               Geração {snapshot.generation}
             </span>
             <span>Distância: {snapshot.best_distance.toFixed(1)} km</span>
-            <span>Tempo estimado: {formatDuration(snapshot.best_duration)}</span>
+            <span>
+              Tempo estimado: {formatDuration(snapshot.best_duration)}
+            </span>
           </div>
         ))}
       </div>
