@@ -7,8 +7,7 @@ import numpy as np
 import pygame
 from typing import List, Tuple
 
-from backend.config.constants import HEIGHT
-from backend.config.interfaces import CityEntity
+from backend.models.common.entities import CityEntity, Individual
 
 
 # Draw a plot on a Pygame screen using Matplotlib:
@@ -52,9 +51,11 @@ def draw_cities(
 # Draw best solution paths on Pygame screen:
 def draw_paths(
     screen: pygame.Surface,
-    solution: List[CityEntity],
-    rgb_color: Tuple[int, int, int],
+    individual: Individual,
+    rgb_colors: List[Tuple[int, int, int]],
     width: int = 1,
 ):
-    path = [city["map_location"] for city in solution]
-    pygame.draw.lines(screen, rgb_color, True, path, width=width)
+
+    for index, vehicle in enumerate(individual):
+        path = [city["map_location"] for city in vehicle]
+        pygame.draw.lines(screen, rgb_colors[index], False, path, width=width)

@@ -1,6 +1,7 @@
 import Select from "react-select";
 import AsyncSelect from "react-select/async";
 import { searchCities } from "../api";
+import { applyOriginCity } from "../routeParams";
 
 const POPULATION_TYPES = [
   { value: "random", label: "Randômico" },
@@ -49,15 +50,20 @@ export default function RouteForm({ params, onChange, onSubmit, loading, errors 
         <div className="field">
           <label>
             <span className="field__step">1</span>
-            Escolha uma cidade de origem:
+            <span className="field__label-text">
+              Escolha uma cidade de origem:
+              <small className="field__label-hint">
+                (limpe o valor do campo para a rota não ter origem fixa)
+              </small>
+            </span>
           </label>
           <AsyncSelect
             cacheOptions
             defaultOptions={false}
             loadOptions={loadCityOptions}
             value={params.originCity}
-            onChange={(selected) => onChange({ ...params, originCity: selected })}
-            placeholder="Digite ao menos 2 letras..."
+            onChange={(selected) => onChange(applyOriginCity(params, selected))}
+            placeholder="Sem origem fixa"
             noOptionsMessage={({ inputValue }) =>
               inputValue.trim().length < MIN_SEARCH_LENGTH
                 ? "Digite ao menos 2 letras para buscar"
@@ -82,6 +88,8 @@ export default function RouteForm({ params, onChange, onSubmit, loading, errors 
             defaultOptions={false}
             loadOptions={loadCityOptions}
             value={params.destinationCities}
+            // The origin city can't also be a destination:
+            filterOption={(option) => option.value !== params.originCity?.value}
             onChange={(selected) => {
               const destinationCities = selected ?? [];
               const destinationValues = destinationCities.map((city) => city.value);
@@ -137,6 +145,32 @@ export default function RouteForm({ params, onChange, onSubmit, loading, errors 
         <div className="field">
           <label>
             <span className="field__step">4</span>
+            Quantos veículos farão as entregas?
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={Math.max(1, params.destinationCities.length)}
+            step={1}
+            value={params.vehiclesNumber}
+            onChange={(event) =>
+              onChange({ ...params, vehiclesNumber: event.target.value })
+            }
+            className={errors.vehiclesNumber ? "field--error" : ""}
+          />
+          {errors.vehiclesNumber ? (
+            <small className="field__error">{errors.vehiclesNumber}</small>
+          ) : (
+            <small>
+              Todos saem da cidade de origem (se houver) e não voltam a ela. No máximo um
+              veículo por cidade de destino.
+            </small>
+          )}
+        </div>
+
+        <div className="field">
+          <label>
+            <span className="field__step">5</span>
             Como você quer gerar sua população inicial?
           </label>
           <select
@@ -159,7 +193,7 @@ export default function RouteForm({ params, onChange, onSubmit, loading, errors 
 
         <div className="field">
           <label>
-            <span className="field__step">5</span>
+            <span className="field__step">6</span>
             Qual o tamanho desejado da população?
           </label>
           <input
@@ -168,7 +202,7 @@ export default function RouteForm({ params, onChange, onSubmit, loading, errors 
             step={1}
             value={params.populationSize}
             onChange={(event) =>
-              onChange({ ...params, populationSize: Number(event.target.value) })
+              onChange({ ...params, populationSize: event.target.value })
             }
             className={errors.populationSize ? "field--error" : ""}
           />
@@ -181,7 +215,7 @@ export default function RouteForm({ params, onChange, onSubmit, loading, errors 
 
         <div className="field">
           <label>
-            <span className="field__step">6</span>
+            <span className="field__step">7</span>
             Qual deve ser a probabilidade de mutação nas gerações?
           </label>
           <input
@@ -190,13 +224,9 @@ export default function RouteForm({ params, onChange, onSubmit, loading, errors 
             max={1}
             step={0.1}
             value={params.mutationProbability}
-            onChange={(event) => {
-              const raw = Number(event.target.value);
-              const clamped = Number.isNaN(raw)
-                ? params.mutationProbability
-                : Math.min(1, Math.max(0, raw));
-              onChange({ ...params, mutationProbability: clamped });
-            }}
+            onChange={(event) =>
+              onChange({ ...params, mutationProbability: event.target.value })
+            }
             className={errors.mutationProbability ? "field--error" : ""}
           />
           {errors.mutationProbability ? (

@@ -41,6 +41,7 @@ export async function optimizeRoute({
   mutationProbability,
   originCity,
   destinationCities,
+  vehiclesNumber,
 }) {
   const response = await fetch(`${API_BASE}/api/optimized-route`, {
     method: "POST",
@@ -49,8 +50,10 @@ export async function optimizeRoute({
       population_type: populationType,
       population_size: populationSize,
       mutation_probability: mutationProbability,
-      origin_city: originCity,
+      // null (JSON for None) when the user chooses no fixed origin city
+      origin_city: originCity ?? null,
       destination_cities: destinationCities,
+      vehicles_number: vehiclesNumber,
     }),
   });
 
@@ -70,11 +73,19 @@ export async function fetchRouteRuns() {
   return response.json();
 }
 
-export async function fetchComparativeReport(citySet) {
+export async function fetchComparativeReport(
+  citySet,
+  vehiclesNumber,
+  period = "all"
+) {
   const response = await fetch(`${API_BASE}/api/route-runs/comparative-report`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ city_set: citySet }),
+    body: JSON.stringify({
+      city_set: citySet,
+      vehicles_number: vehiclesNumber,
+      period,
+    }),
   });
 
   if (!response.ok) {
@@ -98,11 +109,11 @@ export async function fetchProcessRecommendations() {
   return response.json();
 }
 
-export async function fetchDriverInstructions(route) {
+export async function fetchDriverInstructions(route, cities) {
   const response = await fetch(`${API_BASE}/api/driver-instructions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ route }),
+    body: JSON.stringify({ route, cities }),
   });
 
   if (!response.ok) {

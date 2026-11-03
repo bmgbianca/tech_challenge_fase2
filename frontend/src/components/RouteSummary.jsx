@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchDriverInstructions } from "../api";
 import DriverInstructionsModal from "./DriverInstructionsModal";
+import { normalizeRoutes } from "../routes";
 
 function formatDistance(km) {
   if (km == null) return "–";
@@ -40,7 +41,10 @@ export default function RouteSummary({ result, error }) {
     setLoadingInstructions(true);
     setInstructionsError(null);
     try {
-      const data = await fetchDriverInstructions(result.best_route);
+      const data = await fetchDriverInstructions(
+        result.best_route,
+        result.cities
+      );
       setInstructions(data.driver_instructions);
     } catch (err) {
       setInstructionsError(err.message);
@@ -59,7 +63,7 @@ export default function RouteSummary({ result, error }) {
       <div className="summary__item">
         <span>📍</span>
         <div>
-          <div className="summary__label">Distância estimada</div>
+          <div className="summary__label">Distância total (todos os veículos)</div>
           <div className="summary__value">
             {formatDistance(result?.best_distance)}
           </div>
@@ -69,7 +73,10 @@ export default function RouteSummary({ result, error }) {
       <div className="summary__item">
         <span>🕒</span>
         <div>
-          <div className="summary__label">Tempo estimado</div>
+          <div className="summary__label">
+            Tempo estimado
+            {result?.vehicles_number > 1 ? " (veículo mais demorado)" : ""}
+          </div>
           <div className="summary__value">
             {formatDuration(result?.total_duration)}
           </div>
@@ -77,9 +84,17 @@ export default function RouteSummary({ result, error }) {
       </div>
 
       <div className="summary__item">
+        <span>🚚</span>
+        <div>
+          <div className="summary__label">Veículos</div>
+          <div className="summary__value">{result?.vehicles_number ?? "–"}</div>
+        </div>
+      </div>
+
+      <div className="summary__item">
         <span>🏁</span>
         <div>
-          <div className="summary__label">Número de paradas</div>
+          <div className="summary__label">Cidades atendidas</div>
           <div className="summary__value">{result?.stops_count ?? "–"}</div>
         </div>
       </div>
@@ -101,9 +116,12 @@ export default function RouteSummary({ result, error }) {
       )}
 
       <DriverInstructionsModal
+        // New instructions remount the modal, so it starts on the first driver's tab:
+        key={instructions ?? "no-instructions"}
         open={modalOpen}
         loading={loadingInstructions}
         instructions={instructions}
+        vehiclesCount={normalizeRoutes(result?.best_route).length}
         error={instructionsError}
         onClose={() => setModalOpen(false)}
       />

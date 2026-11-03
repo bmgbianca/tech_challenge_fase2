@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchRouteRuns, fetchComparativeReport } from "../api";
 import ReportAccordion from "../components/ReportAccordion";
+import { getCitySet } from "../routes";
 
 function formatDistance(km) {
   return `${km.toFixed(1)} km`;
@@ -16,16 +17,31 @@ function formatDate(isoString) {
   return new Date(isoString).toLocaleString("pt-BR");
 }
 
+const PERIODS = [
+  { value: "all", label: "Todo o histórico", days: null },
+  { value: "day", label: "Últimas 24 horas", days: 1 },
+  { value: "week", label: "Últimos 7 dias", days: 7 },
+];
+
+function filterRunsByPeriod(runs, period) {
+  const { days } = PERIODS.find((item) => item.value === period);
+  if (days === null) return runs;
+
+  const start = Date.now() - days * 24 * 60 * 60 * 1000;
+  return runs.filter((run) => new Date(run.created_at).getTime() >= start);
+}
+
+// Runs are only comparable when they have the same cities AND the same
+// number of vehicles, so both define a group.
 function groupRunsByCitySet(runs) {
   const groups = new Map();
 
   for (const run of runs) {
-    const key = JSON.stringify(run.city_set ?? [...run.best_route].sort());
+    const citySet = getCitySet(run);
+    const vehiclesNumber = run.vehicles_number ?? 1;
+    const key = `${citySet.join("|")}#${vehiclesNumber}`;
     if (!groups.has(key)) {
-      groups.set(key, {
-        citySet: run.city_set ?? [...run.best_route].sort(),
-        runs: [],
-      });
+      groups.set(key, { key, citySet, vehiclesNumber, runs: [] });
     }
     groups.get(key).runs.push(run);
   }
@@ -41,6 +57,7 @@ function groupRunsByCitySet(runs) {
 export default function ReportsPage() {
   const [runs, setRuns] = useState(null);
   const [error, setError] = useState(null);
+  const [period, setPeriod] = useState("all");
 
   const [reportsByCitySet, setReportsByCitySet] = useState({});
   const [expandedByCitySet, setExpandedByCitySet] = useState({});
@@ -53,10 +70,21 @@ export default function ReportsPage() {
       .catch((err) => setError(err.message));
   }, []);
 
-  const groups = runs ? groupRunsByCitySet(runs) : [];
+  const periodRuns = runs ? filterRunsByPeriod(runs, period) : [];
+  const groups = groupRunsByCitySet(periodRuns);
 
-  async function handleToggleReport(citySet) {
-    const key = citySet.join("|");
+  // A report belongs to the period it was generated for, so changing the
+  // period discards the reports already loaded on screen.
+  function handlePeriodChange(event) {
+    setPeriod(event.target.value);
+    setReportsByCitySet({});
+    setExpandedByCitySet({});
+    setLoadingByCitySet({});
+    setErrorsByCitySet({});
+  }
+
+  async function handleToggleReport(group) {
+    const { key, citySet, vehiclesNumber } = group;
 
     // Already open — just collapse it.
     if (expandedByCitySet[key]) {
@@ -72,7 +100,11 @@ export default function ReportsPage() {
     setLoadingByCitySet((current) => ({ ...current, [key]: true }));
     setErrorsByCitySet((current) => ({ ...current, [key]: null }));
     try {
-      const data = await fetchComparativeReport(citySet);
+      const data = await fetchComparativeReport(
+        citySet,
+        vehiclesNumber,
+        period
+      );
       setReportsByCitySet((current) => ({ ...current, [key]: data.report }));
     } catch (err) {
       setErrorsByCitySet((current) => ({ ...current, [key]: err.message }));
@@ -87,8 +119,19 @@ export default function ReportsPage() {
         <h1>Relatórios</h1>
         <p>
           Comparativo das rotas otimizadas ao longo do tempo, agrupadas pelo
-          conjunto de cidades utilizado em cada execução.
+          conjunto de cidades e número de veículos de cada execução. Escolha o
+          período para gerar um relatório diário ou semanal.
         </p>
+        <label className="reports__period">
+          Período:{" "}
+          <select value={period} onChange={handlePeriodChange}>
+            {PERIODS.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {error && <div className="reports__error">{error}</div>}
@@ -100,15 +143,23 @@ export default function ReportsPage() {
         </div>
       )}
 
+      {!error && runs && runs.length > 0 && groups.length === 0 && (
+        <div className="reports__empty">
+          Nenhuma execução no período selecionado.
+        </div>
+      )}
+
       {groups.map((group) => {
-        const key = group.citySet.join("|");
+        const key = group.key;
 
         return (
           <section className="reports__group" key={key}>
             <div className="reports__group-header">
               <div>
                 <h2>
-                  Conjunto de {group.citySet.length} cidades
+                  Conjunto de {group.citySet.length} cidades ·{" "}
+                  {group.vehiclesNumber}{" "}
+                  {group.vehiclesNumber === 1 ? "veículo" : "veículos"}
                   <span className="reports__group-count">
                     {group.runs.length} execuções
                   </span>
@@ -120,7 +171,7 @@ export default function ReportsPage() {
                 <button
                   className="icon-button"
                   aria-label="Gerar análise comparativa"
-                  onClick={() => handleToggleReport(group.citySet)}
+                  onClick={() => handleToggleReport(group)}
                 >
                   📊
                 </button>
@@ -133,6 +184,7 @@ export default function ReportsPage() {
                 <thead>
                   <tr>
                     <th>Data</th>
+                    <th>Veículos</th>
                     <th>População</th>
                     <th>Mutação</th>
                     <th>Gerações</th>
@@ -144,6 +196,7 @@ export default function ReportsPage() {
                   {group.runs.map((run) => (
                     <tr key={run.id}>
                       <td>{formatDate(run.created_at)}</td>
+                      <td>{run.vehicles_number ?? 1}</td>
                       <td>
                         {run.population_type} ({run.population_size})
                       </td>
