@@ -1,6 +1,7 @@
 from .calculation import (
     are_priorities_on_time,
     calculate_fitness,
+    calculate_route_duration,
     calculate_routes,
     calculate_solution_duration,
     get_distance,
@@ -26,6 +27,7 @@ __all__ = [
     "InitialPopulationArgs",
     "are_priorities_on_time",
     "calculate_fitness",
+    "calculate_route_duration",
     "calculate_routes",
     "calculate_solution_duration",
     "get_distance",

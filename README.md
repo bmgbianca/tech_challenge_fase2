@@ -102,6 +102,13 @@ jupyter lab notebooks/demo.ipynb
 
 O notebook (`notebooks/demo.ipynb`) mostra a melhor solução, a curva de convergência, as rotas no mapa (uma cor por veículo), a comparação entre as três estratégias de população inicial (5 sementes cada), o efeito do número de veículos e a comparação com outras abordagens de roteamento (busca aleatória, métodos gulosos, força bruta numa instância pequena e OR-Tools). Os números do comparativo ficam em `backend/data/benchmark_results.json`. Para gerá-los de novo (leva alguns minutos): `python -m backend.benchmark`; para incluir o OR-Tools (opcional, fora do `requirements.txt`): `pip install ortools` e `python -m backend.benchmark --only-ortools`. Se o arquivo `demo_routes.json` for apagado, o script o gera de novo usando a chave do OpenRouteService em `backend/.env`.
 
+## Deploy (gratuito)
+
+- **Backend (Render):** crie um *Web Service* a partir do repositório (o `render.yaml` já traz a configuração: `pip install -r backend/requirements-prod.txt` e `gunicorn backend.run:app`). Defina as variáveis `OPENROUTESERVICE_API_KEY`, `OPENAI_API_KEY`, `OPENAI_MODEL` e `CORS_ORIGINS` (a URL do frontend, ex.: `https://meu-app.vercel.app`).
+- **Frontend (Vercel ou Netlify):** diretório raiz `frontend`, comando `npm run build`, saída `dist`. Defina `VITE_API_URL` com a URL do backend (sem barra final) **antes** do build.
+
+Limitações do plano gratuito: o serviço dorme após ~15 min sem uso (a primeira requisição demora 30–50 s) e o disco é efêmero, então o histórico de execuções (`route_runs.json`) e os caches são perdidos quando o servidor reinicia.
+
 ## Testes
 
 A suíte de testes (pytest) cobre o algoritmo genético para múltiplos veículos (fitness, prazos, seleção, crossover, mutação e estratégias de população inicial), helpers, serviços e rotas da API Flask (histórico, otimização, instruções ao motorista, busca de cidades), a montagem dos dados/prompts da LLM e o cliente de API — com chamadas externas mockadas. O frontend não possui testes automatizados. Para rodar, a partir da raiz do projeto:

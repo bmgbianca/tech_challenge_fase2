@@ -56,6 +56,11 @@ def fake_result():
         "total_duration": 100.0,
         "fitness_history": [50.0, 42.0],
         "snapshots": [],
+        # cities on a line: 10 km and 600 s per id of difference
+        "calculated_routes": {
+            "cities_distances": {(a, b): 10.0 * abs(a - b) for a in range(5) for b in range(5) if a != b},
+            "cities_durations": {(a, b): 600.0 * abs(a - b) for a in range(5) for b in range(5) if a != b},
+        },
     }
 
 
@@ -97,6 +102,8 @@ class TestOptimizeRoute:
         assert body["stops_count"] == 5
         assert body["vehicles_number"] == 2
         assert [city["name"] for city in body["cities"]] == list("BCDEA")
+        assert [v["route"] for v in body["vehicles_summary"]] == body["best_route"]
+        assert [v["distance_km"] for v in body["vehicles_summary"]] == [20.0, 40.0]
 
         saved = history.get_route_runs()[0]
         assert saved["best_route"] == body["best_route"]

@@ -16,6 +16,7 @@ from ..models import (
 from ..ga import (
     are_priorities_on_time,
     calculate_fitness,
+    calculate_route_duration,
     calculate_routes,
     calculate_solution_duration,
     generate_initial_population,
@@ -31,6 +32,32 @@ def get_routes_names(individual: Individual) -> list[list[str]]:
     """Converts an individual into what is stored in the snapshots: one list
     of city names per vehicle, e.g. [["A", "B", "C"], ["A", "D"]]."""
     return [[city["name"] for city in vehicle] for vehicle in individual]
+
+
+def get_vehicles_summary(
+    individual: Individual, calculated_routes: dict, has_origin: bool
+) -> list[dict]:
+    """Per-vehicle numbers shown in the route summary: route (city names),
+    distance (km), duration (s), stops (the fixed origin, repeated in every
+    route, is not a stop) and whether its priority cities meet the deadline."""
+
+    distances = calculated_routes["cities_distances"]
+    durations = calculated_routes["cities_durations"]
+
+    return [
+        {
+            "vehicle": number,
+            "route": [city["name"] for city in vehicle],
+            "distance_km": calculate_fitness(distances, [vehicle]),
+            "duration_seconds": calculate_route_duration(durations, vehicle),
+            "stops_count": len(vehicle) - (1 if has_origin else 0),
+            "priority_cities_count": sum(1 for city in vehicle if city.get("priority")),
+            "priorities_on_time": are_priorities_on_time(
+                durations, [vehicle], TIME_LIMIT
+            ),
+        }
+        for number, vehicle in enumerate(individual, start=1)
+    ]
 
 
 def get_optimized_route(arg: GetOptimizedRouteArgs):
