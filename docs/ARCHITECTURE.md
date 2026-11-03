@@ -20,8 +20,8 @@ flowchart LR
     end
 
     subgraph Externos["Serviços externos"]
-        ORS["OpenRouteService — distâncias e durações"]
-        IBGE["IBGE — municípios e geometria (geocoding)"]
+        ORS["OpenRouteService — distâncias, durações e geocodificação"]
+        IBGE["IBGE — lista de municípios (só se o arquivo local faltar)"]
         OpenAI["OpenAI — instruções e relatórios"]
     end
 
@@ -34,6 +34,7 @@ flowchart LR
     API --> LLM
     API --> Hist
     GA --> ORS
+    API --> ORS
     API --> IBGE
     LLM --> OpenAI
     Hist --> Files
@@ -73,7 +74,7 @@ backend/
 │   └── process_recommendations.py # recomendações de processo (histórico completo)
 ├── services/                 # clientes de API externas
 │   ├── api_requests.py       # OpenRouteService (distâncias/durações)
-│   └── ibge_cities.py        # IBGE (lista de municípios + geocodificação)
+│   └── ibge_cities.py        # lista de municípios (IBGE) + geocodificação (OpenRouteService)
 ├── data/
 │   ├── route_cities.py       # dataset fixo das 16 cidades (demo Pygame e pré-preenchimento do formulário)
 │   └── *.json                # arquivos gerados em runtime (histórico, caches)
@@ -110,20 +111,18 @@ sequenceDiagram
     actor Usuário
     participant FE as Frontend (HomePage)
     participant API as Backend (Flask)
-    participant IBGE
     participant ORS as OpenRouteService
     participant GA as Algoritmo Genético
 
     Usuário->>FE: seleciona origem (opcional), destinos, nº de veículos e parâmetros
     FE->>API: GET /api/cities/search?q=...
-    API->>IBGE: busca municípios (cacheado localmente)
-    IBGE-->>API: lista de municípios
+    API->>API: filtra a lista local de municípios (sp_municipalities.json)
     API-->>FE: sugestões de cidades
 
     Usuário->>FE: clica em "Gerar rota"
     FE->>API: POST /api/geocode-cities
-    API->>IBGE: geometria do município (cacheada por id)
-    IBGE-->>API: coordenadas (centroide)
+    API->>ORS: geocodificação do município (cacheada por id)
+    ORS-->>API: coordenadas
     API-->>FE: coordenadas das cidades selecionadas
     FE->>FE: redesenha os marcadores no mapa
 
@@ -213,10 +212,10 @@ Os relatórios comparativos e as recomendações de processo são **cacheados** 
 |---|---|---|
 | `route_runs.json` | Histórico de execuções do algoritmo (parâmetros, resultado, `vehicles_number`, `best_route` por veículo, `stops_count` e `city_set` sem repetições) | A cada chamada bem-sucedida a `/api/optimized-route` |
 | `comparative_reports.json` | Cache dos relatórios/recomendações gerados por LLM | A cada relatório novo gerado |
-| `sp_municipalities.json` | Lista dos 645 municípios de SP (nome + id, via IBGE) | Uma vez, na primeira busca de cidade |
-| `sp_municipality_coordinates.json` | Coordenadas (centroide) já calculadas por município | Sob demanda, quando uma cidade é geocodificada pela primeira vez |
+| `sp_municipalities.json` | Lista dos 645 municípios de SP (nome + id, via IBGE). **É versionada** no repositório; o IBGE só é consultado se o arquivo faltar | Só se o arquivo não existir |
+| `sp_municipality_coordinates.json` | Coordenadas já obtidas na geocodificação da OpenRouteService, por município | Sob demanda, quando uma cidade é geocodificada pela primeira vez |
 
-Esses arquivos são gerados em runtime e não são versionados no repositório (ver `.gitignore`).
+Exceto `sp_municipalities.json`, esses arquivos são gerados em runtime e não são versionados no repositório (ver `.gitignore`). O IBGE não é alcançável a partir do Render, por isso a lista de municípios vai no repositório e as coordenadas vêm da OpenRouteService.
 
 ## Referência de API
 

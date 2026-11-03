@@ -3,10 +3,19 @@ from pathlib import Path
 
 import requests
 
+from .api_requests import openrouteservice_key
+
 IBGE_SP_MUNICIPALITIES_URL = (
     "https://servicodados.ibge.gov.br/api/v1/localidades/estados/SP/municipios"
 )
-IBGE_MALHA_URL = "https://servicodados.ibge.gov.br/api/v3/malhas/municipios/{id}"
+ORS_GEOCODE_URL = "https://api.openrouteservice.org/geocode/search"
+# bounding box of the state of São Paulo, to avoid same-name towns elsewhere
+SP_BOUNDING_BOX = {
+    "boundary.rect.min_lon": -53.2,
+    "boundary.rect.max_lon": -44.1,
+    "boundary.rect.min_lat": -25.4,
+    "boundary.rect.max_lat": -19.7,
+}
 
 CACHE_FILE = Path(__file__).resolve().parent.parent / "data" / "sp_municipalities.json"
 COORDINATES_CACHE_FILE = (
@@ -26,10 +35,10 @@ def _fetch_from_ibge():
 
 
 def get_sp_municipalities():
-    """Returns every municipality in the state of São Paulo (645, per IBGE),
-    fetched once from the IBGE public API and cached locally — this is
-    static reference data (names only, no coordinates), so there's no need
-    to hit IBGE again once the cache file exists."""
+    """Returns every municipality in the state of São Paulo (645, per IBGE).
+    This is static reference data (names only, no coordinates), so the list
+    ships with the repository (sp_municipalities.json); IBGE is only queried
+    if that file is missing, and the result is then saved to it."""
 
     if CACHE_FILE.exists():
         with open(CACHE_FILE, "r", encoding="utf-8") as file:
@@ -51,18 +60,6 @@ def _municipality_id_by_name(name):
     return None
 
 
-def _polygon_points(geometry):
-    """Flattens a GeoJSON Polygon or MultiPolygon's exterior ring(s) into a
-    flat list of [lon, lat] points, for a simple centroid calculation."""
-
-    rings = (
-        geometry["coordinates"]
-        if geometry["type"] == "Polygon"
-        else [ring for polygon in geometry["coordinates"] for ring in polygon]
-    )
-    return [point for ring in rings for point in ring]
-
-
 def _read_coordinates_cache():
     if not COORDINATES_CACHE_FILE.exists():
         return {}
@@ -76,29 +73,34 @@ def _write_coordinates_cache(cache):
         json.dump(cache, file, ensure_ascii=False, indent=2)
 
 
-def _fetch_centroid(municipality_id):
-    url = IBGE_MALHA_URL.format(id=municipality_id)
+def _fetch_coordinates(name):
     response = requests.get(
-        url, params={"formato": "application/vnd.geo+json"}, timeout=10
+        ORS_GEOCODE_URL,
+        headers={"Authorization": openrouteservice_key},
+        params={
+            "text": name,
+            "boundary.country": "BR",
+            "layers": "locality",
+            "size": 1,
+            **SP_BOUNDING_BOX,
+        },
+        timeout=10,
     )
     response.raise_for_status()
 
-    geometry = response.json()["features"][0]["geometry"]
-    points = _polygon_points(geometry)
+    features = response.json()["features"]
+    if not features or features[0]["properties"].get("region_a") != "SP":
+        raise ValueError(f"Coordenadas não encontradas para: {name}")
 
-    avg_lon = sum(point[0] for point in points) / len(points)
-    avg_lat = sum(point[1] for point in points) / len(points)
-
-    return [avg_lon, avg_lat]
+    return features[0]["geometry"]["coordinates"]
 
 
 def geocode_city(name):
     """Resolves a São Paulo municipality name to an approximate [lon, lat]
-    coordinate, by averaging the points of its official boundary geometry
-    (from IBGE's own "malhas" API) — no external geocoder involved, and no
-    risk of hitting a third-party API's rate limit, since this only ever
-    runs for the handful of cities a user actually selects, and the result
-    is cached locally afterwards (a municipality's shape never changes)."""
+    coordinate through the OpenRouteService geocoder (the same service and
+    key already used for distances), restricted to the state of São Paulo.
+    This only ever runs for the handful of cities a user actually selects,
+    and the result is cached locally afterwards."""
 
     municipality_id = _municipality_id_by_name(name)
     if municipality_id is None:
@@ -110,7 +112,7 @@ def geocode_city(name):
     if cache_key in cache:
         return cache[cache_key]
 
-    coordinates = _fetch_centroid(municipality_id)
+    coordinates = _fetch_coordinates(name)
 
     cache[cache_key] = coordinates
     _write_coordinates_cache(cache)

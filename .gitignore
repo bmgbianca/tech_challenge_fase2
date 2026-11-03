@@ -8,7 +8,6 @@ backend/.env
 backend/.vscode
 backend/data/route_runs.json
 backend/data/comparative_reports.json
-backend/data/sp_municipalities.json
 backend/data/sp_municipality_coordinates.json
 
 # JavaScript (frontend)
