@@ -65,7 +65,7 @@ calculated_durations = calculated_routes["cities_durations"]
 # Create initial population
 population = generate_initial_population(
     InitialPopulationArgs(
-        population_strategy="nearest_neighbor",  # este argumento pode ser alterado aqui (opções: "random", "nearest_neighbor", "cheapest_insertion")
+        population_strategy="cheapest_insertion",  # este argumento pode ser alterado aqui (opções: "random", "nearest_neighbor", "cheapest_insertion")
         distances_matrix=calculated_distances,
         population_size=POPULATION_SIZE,
         cities=CITIES,
